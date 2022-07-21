@@ -1,0 +1,57 @@
+version: '3.7'
+services: 
+  nginx-webserver:
+    container_name: ${PROJECT_NAME:-default}-nginx
+    image: nginx:${NGINX_TAG:-latest}
+    user: ${UID}:${GID}
+    volumes:
+      - .:/var/www/${PROJECT_DIR}
+      - ${NGINX_CONFIG_FOLDER}/webserver.conf:/etc/nginx/conf.d/webserver.conf:ro
+      - ${NGINX_CONFIG_FOLDER}/upstream.conf:/etc/nginx/conf.d/
+      - ${NGINX_CONFIG_FOLDER}/nginx.conf:/etc/nginx/nginx.conf:ro
+    links:
+      - php
+      - db
+      - redis
+    ports:
+      - ${NGINX_PORT:-80}:80
+  php:
+    container_name: ${PROJECT_NAME:-default}-php
+    build:
+      context: ./docker/php
+      target: dev
+    ports:
+      - ${PHP_FPM_PORT:-9000}:9000
+    user: ${UID}:${GID}
+    working_dir: /var/www/${PROJECT_DIR}
+    volumes:
+      - .:/var/www/${PROJECT_DIR}
+  db:
+    container_name: ${PROJECT_NAME:-default}-database
+    image: mysql:${MYSQL_TAG:-latest}
+    volumes:
+    - ${MYSQL_DATA_FOLDER}:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - ${MYSQL_PORT:-3306}:3306
+  node:
+    container_name: ${PROJECT_NAME:-default}-node
+    build:
+      context: ./docker/node
+    working_dir: /var/www/${PROJECT_DIR}
+    volumes:
+        - .:/var/www/${PROJECT_DIR}
+    ports:
+      - ${NODE_PORT:-82}:80
+  redis:
+    container_name: ${PROJECT_NAME:-default}-redis
+    image: redis:${REDIS_TAG:-latest}
+    volumes:
+      - ${REDIS_DATA_FOLDER}:/var/lib/redis
+    ports:
+      - 127.0.0.1:${REDIS_PORT:-6379}:6379
